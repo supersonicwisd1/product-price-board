@@ -19,6 +19,7 @@ def update_prices_every_two_weeks():
             new_price = price_calculator_service.calculate_new_price(product.id)  # pass db session and product ID
             if new_price:
                 product.price = new_price
+                product.last_suggested = datetime.utcnow()
                 db.add(product)
         
         db.commit()
