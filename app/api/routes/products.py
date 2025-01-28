@@ -7,10 +7,13 @@ from app.schemas.review import ReviewRead, ReviewCreate
 from app.api.dependencies import get_db
 from app.models.user import User
 from app.models.review import Review
+from app.models.product import Product
 from sqlalchemy.orm import Session
 from app.core.security import get_current_user
 import shutil
 import os
+from typing import Optional
+from datetime import datetime
 
 router = APIRouter()
 
@@ -22,7 +25,7 @@ def create_product(
     name: str,
     price: float,
     category_id: int,
-    image: UploadFile = File(...),
+    image: Optional[UploadFile] = File(None),  # Default to None
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -31,15 +34,18 @@ def create_product(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Not enough permissions"
         )
 
-    # Save the file
-    file_path = os.path.join(UPLOAD_DIR, image.filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(image.file, buffer)
+    file_path = None
+    if image and image.filename:  # Ensure image is provided and has a valid filename
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        file_path = os.path.join(UPLOAD_DIR, image.filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
 
     # Create product
     product_in = ProductCreate(name=name, price=price, category_id=category_id)
     product = crud_product.create(db, product_in)
-    product.image_url = file_path  # Save the file path
+    if file_path:
+        product.image_url = file_path  # Save the file path if an image was uploaded
     db.commit()
     db.refresh(product)
 
@@ -65,7 +71,7 @@ def update_product(
     name: str = None,
     price: float = None,
     category_id: int = None,
-    image: UploadFile = File(None),  # Optional file upload
+    image: Optional[UploadFile] = File(None),  # Optional file upload
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -122,6 +128,13 @@ def create_review(
     db: Session = Depends(get_db), 
     user: User = Depends(get_current_user)  # Ensure logged-in user
 ):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with ID {product_id} not found."
+        )
+    
     # Create a new review linked to the current user
     new_review = Review(
         price=review.price,
@@ -131,6 +144,54 @@ def create_review(
         product_id=product_id,
     )
     db.add(new_review)
+
+    # Update last_suggested field
+    product.last_suggested = datetime.utcnow()
+    db.add(product)
+
     db.commit()
     db.refresh(new_review)
+
     return new_review
+    return new_review
+
+# @router.post("/{product_id}/reviews", response_model=ReviewRead)
+# def create_review(
+#     product_id: int,
+#     review: ReviewCreate,  # Review input without product_id
+#     db: Session = Depends(get_db),
+#     user: User = Depends(get_current_user),  # Ensure logged-in user
+# ):
+#     # Ensure the product exists
+#     product = db.query(Product).filter(Product.id == product_id).first()
+#     if not product:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail=f"Product with ID {product_id} not found."
+#         )
+
+#     # Optional: Check if the user has already reviewed the product
+#     existing_review = (
+#         db.query(Review)
+#         .filter(Review.product_id == product_id, Review.user_id == user.id)
+#         .first()
+#     )
+#     if existing_review:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail="You have already reviewed this product."
+#         )
+
+#     # Create a new review linked to the current user and product
+#     new_review = Review(
+#         price=review.price,
+#         market=review.market,
+#         extra_note=review.extra_note,
+#         user_id=user.id,
+#         product_id=product_id,  # Use the product_id from the URL
+#     )
+#     db.add(new_review)
+#     db.commit()
+#     db.refresh(new_review)
+
+#     return new_review

@@ -17,4 +17,3 @@ class Product(Base):
     category_id = Column(Integer, ForeignKey("categories.id"))
     category = relationship("Category", back_populates="product")
     reviews = relationship("Review", back_populates="product")
-    suggestions = relationship("Suggestion", back_populates="product")

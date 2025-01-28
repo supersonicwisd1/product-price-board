@@ -1,12 +1,13 @@
 # app/api/routes/auth.py
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from app.schemas.user import UserCreate, UserLogin, UserRead, Token
 from app.crud.user import crud_user
 from app.core.security import verify_password, create_access_token, get_current_user, get_current_token, get_active_user
 from app.api.dependencies import get_db
 from sqlalchemy.orm import Session
-from app.models.user import User
+from app.models.user import User, TokenBlacklist
+from datetime import datetime, timedelta
 
 router = APIRouter()
 

@@ -1,3 +1,4 @@
+# product_price_board/app/services/notification.py
 from fastapi_mail import FastMail, MessageSchema
 from app.core.config import settings
 

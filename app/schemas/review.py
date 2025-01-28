@@ -11,7 +11,7 @@ class ReviewBase(BaseModel):
     extra_note: Optional[str] = None
 
 class ReviewCreate(ReviewBase):
-    product_id: int
+    pass
 
 class ReviewUpdate(ReviewBase):
     user_id: int

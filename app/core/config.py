@@ -19,7 +19,7 @@ class Settings:
     SECRET_KEY = os.getenv("SECRET_KEY")
     ALGORITHM = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES = 30
-    DATABASE_URL_DEV = "sqlite:///./dev.db"
+    DATABASE_URL_DEV = "sqlite:///./dev2.db"
     DATABASE_URL_PROD = os.getenv("DATABASE_URL_PROD")
     ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
     DEBUG = os.getenv("DEBUG")

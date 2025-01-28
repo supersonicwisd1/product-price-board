@@ -2,10 +2,9 @@
 
 from fastapi import FastAPI, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import auth_router, product_router, category_router, review_router, suggestion_router, health_router
+from app.api.routes import auth_router, product_router, category_router, health_router
 from app.core.config import settings
 from app.services.notification import NotificationService
-from app.services.review_analysis import ReviewAnalysisService
 from app.services.price_calculator import PriceCalculatorService
 from app.db.session import engine
 from app.db.base import Base
@@ -33,7 +32,10 @@ def custom_openapi():
             "bearerFormat": "JWT",  # Optional
         }
     }
-    openapi_schema["security"] = [{"BearerAuth": []}]
+    # Ensure security applies globally
+    for path in openapi_schema["paths"].values():
+        for method in path.values():
+            method["security"] = [{"BearerAuth": []}]
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
@@ -52,8 +54,6 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(product_router, prefix="/products", tags=["Products"])
 app.include_router(category_router, prefix="/categories", tags=["Categories"])
-# app.include_router(review_router, prefix="/reviews", tags=["Reviews"])
-# app.include_router(suggestion_router, prefix="/suggestions", tags=["Suggestions"])
 app.include_router(health_router, prefix="/health", tags=["Health"])
 
 @app.on_event("startup")
@@ -89,15 +89,3 @@ async def recalculate_price(
     # Use the service to add the background task for price recalculation
     price_calculator_service.calculate_new_price_background(background_tasks, product_id)
     return {"message": "Price recalculation task added."}
-
-@app.post("/analyze_reviews/")
-async def analyze_product_reviews(
-    product_id: int, 
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-):
-    # Initialize the ReviewAnalysisService with the database session
-    review_analysis_service = ReviewAnalysisService(db)
-    # Use the service to add the background task for review analysis
-    review_analysis_service.analyze_reviews_background(background_tasks, product_id)
-    return {"message": "Review analysis task added."}
